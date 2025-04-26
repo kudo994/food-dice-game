@@ -8,80 +8,165 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
   <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+    }
+    #app {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+      width: 100%;
+      max-width: 500px;
+      position: relative;
+      overflow: hidden;
+    }
     #dice-container {
       width: 150px;
       height: 150px;
       margin: 0 auto;
     }
-    #food-chart, #player-food-chart {
+    #food-chart {
       width: 100%;
       height: 200px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 10px;
+    }
+    #reset-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: linear-gradient(45deg, #ff4d4d, #ff7878);
+      color: white;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(255, 77, 77, 0.3);
+      transition: transform 0.2s ease;
+    }
+    #reset-button:hover {
+      transform: scale(1.1);
+      background: linear-gradient(45deg, #ff7878, #ff4d4d);
+    }
+    .btn {
+      transition: all 0.3s ease;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    .btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    .screen {
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .screen.hidden {
+      opacity: 0;
+      transform: translateY(20px);
+      pointer-events: none;
+    }
+    .list-item {
+      transition: all 0.3s ease;
+    }
+    .list-item:hover {
+      background-color: #f1f5f9;
+      transform: translateX(5px);
+    }
+    h1, h2 {
+      color: #2d3748;
+    }
+    input, button {
+      border-radius: 10px !important;
     }
   </style>
 </head>
-<body class="bg-gray-100 flex justify-center items-center min-h-screen">
-  <div id="app" class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+<body>
+  <div id="app">
     <!-- Màn hình đăng nhập -->
-    <div id="login-screen" class="space-y-4">
-      <h1 class="text-2xl font-bold text-center">Chào mừng đến với trò chơi chọn món ăn!</h1>
-      <input id="player-name" type="text" placeholder="Nhập tên của bạn" class="w-full p-2 border rounded">
-      <button onclick="login()" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Bắt đầu chơi</button>
+    <div id="login-screen" class="screen space-y-6">
+      <h1 class="text-3xl font-bold text-center text-gray-800">Trưa Mai Đớp Gì?</h1>
+      <input id="player-name" type="text" placeholder="Nhập tên của bạn" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+      <button onclick="login()" class="btn w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700">Bắt đầu Thử Vận May</button>
     </div>
 
     <!-- Màn hình chính -->
-    <div id="main-screen" class="hidden space-y-4">
-      <h1 class="text-2xl font-bold text-center">Chọn món ăn trưa</h1>
-      <p id="welcome-message" class="text-center"></p>
-      <div id="dice-container"></div>
-      <button onclick="rollDice()" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Đổ xúc xắc</button>
-      <p id="result" class="text-center font-semibold"></p>
-      <div class="space-y-2">
-        <input id="new-food" type="text" placeholder="Thêm món ăn mới" class="w-full p-2 border rounded">
-        <button onclick="addFood()" class="w-full bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Thêm món</button>
+    <div id="main-screen" class="screen hidden space-y-6">
+      <h1 class="text-3xl font-bold text-center text-gray-800">Bữa Trưa QLSX & CUT</h1>
+      <p id="welcome-message" class="text-center text-gray-600"></p>
+      <div id="dice-container" class="relative"></div>
+      <button onclick="rollDice()" class="btn w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700">Đổ Xúc Xắc</button>
+      <p id="result" class="text-center font-semibold text-lg text-gray-700"></p>
+      <div class="space-y-3">
+        <input id="new-food" type="text" placeholder="Thêm món ăn mới" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+        <button onclick="addFood()" class="btn w-full bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700">Thêm Món</button>
       </div>
-      <h2 class="text-lg font-semibold">Danh sách món ăn</h2>
-      <ul id="food-list" class="list-disc pl-5"></ul>
-      <h2 class="text-lg font-semibold">Lịch sử chọn món</h2>
-      <ul id="history" class="list-disc pl-5"></ul>
-      <h2 class="text-lg font-semibold">Thống kê món ăn được chọn</h2>
-      <div class="flex space-x-2">
-        <button onclick="showTop5Foods()" class="w-full bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Top 5 món</button>
-        <button onclick="showAllFoods()" class="w-full bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Hiển thị tất cả</button>
+      <h2 class="text-xl font-semibold text-gray-700">Danh Sách Món Ăn</h2>
+      <ul id="food-list" class="list-disc pl-5 space-y-2"></ul>
+      <h2 class="text-xl font-semibold text-gray-700">Lịch Sử Chọn Món</h2>
+      <ul id="history" class="list-disc pl-5 space-y-2"></ul>
+      <h2 class="text-xl font-semibold text-gray-700">Thống Kê Món Ăn</h2>
+      <p id="most-selected-food" class="text-center font-medium text-gray-600"></p>
+      <div class="flex space-x-3">
+        <button onclick="showTop5Foods()" class="btn w-full bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700">Top 5 Món</button>
+        <button onclick="showAllFoods()" class="btn w-full bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700">Hiển Thị Tất Cả</button>
       </div>
       <canvas id="food-chart"></canvas>
-      <h2 class="text-lg font-semibold">Thống kê món ăn theo người chơi</h2>
-      <canvas id="player-food-chart"></canvas>
-      <div class="flex space-x-2">
-        <button onclick="resetGame()" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600">Làm mới</button>
-        <button onclick="goToFinance()" class="w-full bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600">Thu chi</button>
+      <div class="flex space-x-3">
+        <button onclick="goToFinance()" class="btn w-full bg-yellow-600 text-white p-3 rounded-lg hover:bg-yellow-700">Thu Chi</button>
+      </div>
+      <div id="reset-button" onclick="resetGame()" title="Làm mới">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9H0m0 0v5h4.582M12 4a8 8 0 110 16 8 8 0 010-16z"></path>
+        </svg>
       </div>
     </div>
 
     <!-- Màn hình thu chi -->
-    <div id="finance-screen" class="hidden space-y-4">
-      <h1 class="text-2xl font-bold text-center">Quản lý thu chi</h1>
-      <div class="space-y-2">
-        <input id="expense-description" type="text" placeholder="Mô tả chi phí (VD: Cơm gà)" class="w-full p-2 border rounded">
-        <input id="expense-amount" type="number" placeholder="Số tiền (VND)" class="w-full p-2 border rounded">
-        <button onclick="addExpense()" class="w-full bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Thêm chi phí</button>
+    <div id="finance-screen" class="screen hidden space-y-6">
+      <h1 class="text-3xl font-bold text-center text-gray-800">Quản Lý Thu Chi</h1>
+      <div class="space-y-3">
+        <input id="expense-description" type="text" placeholder="Mô tả nguyên liệu" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+        <input id="expense-amount" type="number" placeholder="Số tiền (VND)" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+        <button onclick="addExpense()" class="btn w-full bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700">Thêm Chi Phí</button>
       </div>
-      <h2 class="text-lg font-semibold">Thống kê thu chi</h2>
-      <ul id="expense-list" class="list-disc pl-5"></ul>
-      <button onclick="goToMain()" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Quay lại</button>
+      <div class="space-y-3">
+        <input id="number-of-participants" type="number" placeholder="Số người tham gia ăn" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none" min="1">
+      </div>
+      <h2 class="text-xl font-semibold text-gray-700">Thống Kê Thu Chi</h2>
+      <ul id="expense-list" class="list-disc pl-5 space-y-2"></ul>
+      <p id="total-expense" class="text-center font-bold text-gray-800"></p>
+      <p id="per-person-expense" class="text-center font-medium text-gray-600"></p>
+      <button onclick="goToMain()" class="btn w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700">Quay Lại</button>
     </div>
   </div>
 
   <script>
-    const socket = io('https://treasure-rightful-scallion.glitch.me'); // Đã cập nhật URL Glitch của bạn
+    const socket = io('https://treasure-rightful-scallion.glitch.me');
 
     let playerName = '';
     let foods = [];
     let history = [];
     let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
     let foodResults = {};
-    let playerFoodResults = {};
-    let foodChart, playerFoodChart;
+    let foodChart;
     let showingTop5 = false;
 
     // Nhận dữ liệu ban đầu từ server
@@ -89,12 +174,10 @@
       foods = data.foods;
       history = data.history;
       foodResults = data.foodResults;
-      playerFoodResults = data.playerFoodResults;
       updateFoodList();
       updateHistory();
-      if (foodChart && playerFoodChart) {
+      if (foodChart) {
         updateFoodChart();
-        updatePlayerFoodChart();
       }
     });
 
@@ -115,33 +198,11 @@
       updateFoodChart();
     });
 
-    socket.on('updatePlayerFoodResults', (newPlayerFoodResults) => {
-      playerFoodResults = newPlayerFoodResults;
-      updatePlayerFoodChart();
-    });
-
-    // Khởi tạo foodResults và playerFoodResults
+    // Khởi tạo foodResults
     function initFoodResults() {
       foods.forEach(food => {
-        if (!(food in foodResults)) {
-          foodResults[food] = 0;
-        }
-      });
-    }
-
-    function initPlayerFoodResults() {
-      history.forEach(entry => {
-        const match = entry.match(/(.+?) \(bởi (.+)\)/);
-        if (match) {
-          const food = match[1];
-          const player = match[2];
-          if (!playerFoodResults[player]) {
-            playerFoodResults[player] = {};
-          }
-          if (!playerFoodResults[player][food]) {
-            playerFoodResults[player][food] = 0;
-          }
-          playerFoodResults[player][food]++;
+        if (!(food.name in foodResults)) {
+          foodResults[food.name] = 0;
         }
       });
     }
@@ -158,18 +219,20 @@
       renderer.setSize(150, 150);
       container.appendChild(renderer.domElement);
 
+      // Ánh sáng
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(0, 1, 1);
+      scene.add(directionalLight);
+
+      // Xúc xắc với texture
       const geometry = new THREE.BoxGeometry(1, 1, 1);
-      const materials = [
-        new THREE.MeshBasicMaterial({ color: 0xffffff }),
-        new THREE.MeshBasicMaterial({ color: 0xffffff }),
-        new THREE.MeshBasicMaterial({ color: 0xffffff }),
-        new THREE.MeshBasicMaterial({ color: 0xffffff }),
-        new THREE.MeshBasicMaterial({ color: 0xffffff }),
-        new THREE.MeshBasicMaterial({ color: 0xffffff })
-      ];
-      dice = new THREE.Mesh(geometry, materials);
+      const material = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 100 });
+      dice = new THREE.Mesh(geometry, material);
       scene.add(dice);
 
+      // Thêm chấm trên xúc xắc
       const dotGeometry = new THREE.SphereGeometry(0.05, 16, 16);
       const dotMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
@@ -304,12 +367,12 @@
             label: 'Số lần được chọn',
             data: Object.values(foodResults),
             backgroundColor: [
-              'rgba(255, 99, 132, 0.5)',
-              'rgba(54, 162, 235, 0.5)',
-              'rgba(255, 206, 86, 0.5)',
-              'rgba(75, 192, 192, 0.5)',
-              'rgba(153, 102, 255, 0.5)',
-              'rgba(255, 159, 64, 0.5)'
+              'rgba(255, 99, 132, 0.7)',
+              'rgba(54, 162, 235, 0.7)',
+              'rgba(255, 206, 86, 0.7)',
+              'rgba(75, 192, 192, 0.7)',
+              'rgba(153, 102, 255, 0.7)',
+              'rgba(255, 159, 64, 0.7)'
             ].slice(0, Object.keys(foodResults).length),
             borderColor: [
               'rgba(255, 99, 132, 1)',
@@ -328,20 +391,20 @@
               beginAtZero: true,
               title: {
                 display: true,
-                text: 'Số lần được chọn'
+                text: 'Số lần được chọn',
+                font: { family: 'Poppins', size: 14 }
               }
             },
             x: {
               title: {
                 display: true,
-                text: 'Món ăn'
+                text: 'Món ăn',
+                font: { family: 'Poppins', size: 14 }
               }
             }
           },
           plugins: {
-            legend: {
-              display: false
-            },
+            legend: { display: false },
             tooltip: {
               enabled: true,
               callbacks: {
@@ -355,60 +418,7 @@
       });
     }
 
-    // Khởi tạo biểu đồ món ăn theo người chơi
-    function initPlayerFoodChart() {
-      const ctx = document.getElementById('player-food-chart').getContext('2d');
-      const players = Object.keys(playerFoodResults);
-      const allFoods = [...new Set(Object.values(playerFoodResults).flatMap(player => Object.keys(player)))];
-      const datasets = players.map((player, index) => ({
-        label: player,
-        data: allFoods.map(food => playerFoodResults[player][food] || 0),
-        backgroundColor: `rgba(${(index * 50) % 255}, ${(index * 100) % 255}, ${(index * 150) % 255}, 0.5)`,
-        borderColor: `rgba(${(index * 50) % 255}, ${(index * 100) % 255}, ${(index * 150) % 255}, 1)`,
-        borderWidth: 1
-      }));
-
-      playerFoodChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: allFoods,
-          datasets: datasets
-        },
-        options: {
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Số lần được chọn'
-              }
-            },
-            x: {
-              title: {
-                display: true,
-                text: 'Món ăn'
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              display: true,
-              position: 'top'
-            },
-            tooltip: {
-              enabled: true,
-              callbacks: {
-                label: function(context) {
-                  return `${context.dataset.label}: ${context.raw} lần`;
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // Cập nhật biểu đồ món ăn
+    // Cập nhật biểu đồ món ăn và thông báo món ăn được chọn nhiều nhất
     function updateFoodChart() {
       let labels = Object.keys(foodResults);
       let data = Object.values(foodResults);
@@ -424,12 +434,12 @@
       foodChart.data.labels = labels;
       foodChart.data.datasets[0].data = data;
       foodChart.data.datasets[0].backgroundColor = [
-        'rgba(255, 99, 132, 0.5)',
-        'rgba(54, 162, 235, 0.5)',
-        'rgba(255, 206, 86, 0.5)',
-        'rgba(75, 192, 192, 0.5)',
-        'rgba(153, 102, 255, 0.5)',
-        'rgba(255, 159, 64, 0.5)'
+        'rgba(255, 99, 132, 0.7)',
+        'rgba(54, 162, 235, 0.7)',
+        'rgba(255, 206, 86, 0.7)',
+        'rgba(75, 192, 192, 0.7)',
+        'rgba(153, 102, 255, 0.7)',
+        'rgba(255, 159, 64, 0.7)'
       ].slice(0, labels.length);
       foodChart.data.datasets[0].borderColor = [
         'rgba(255, 99, 132, 1)',
@@ -440,23 +450,14 @@
         'rgba(255, 159, 64, 1)'
       ].slice(0, labels.length);
       foodChart.update();
-    }
 
-    // Cập nhật biểu đồ món ăn theo người chơi
-    function updatePlayerFoodChart() {
-      const players = Object.keys(playerFoodResults);
-      const allFoods = [...new Set(Object.values(playerFoodResults).flatMap(player => Object.keys(player)))];
-      const datasets = players.map((player, index) => ({
-        label: player,
-        data: allFoods.map(food => playerFoodResults[player][food] || 0),
-        backgroundColor: `rgba(${(index * 50) % 255}, ${(index * 100) % 255}, ${(index * 150) % 255}, 0.5)`,
-        borderColor: `rgba(${(index * 50) % 255}, ${(index * 100) % 255}, ${(index * 150) % 255}, 1)`,
-        borderWidth: 1
-      }));
-
-      playerFoodChart.data.labels = allFoods;
-      playerFoodChart.data.datasets = datasets;
-      playerFoodChart.update();
+      // Cập nhật thông báo món ăn được chọn nhiều nhất
+      const mostSelectedFood = Object.entries(foodResults)
+        .sort((a, b) => b[1] - a[1])[0];
+      const mostSelectedMessage = mostSelectedFood && mostSelectedFood[1] > 0
+        ? `Món ăn được chọn trúng nhiều nhất cho bữa trưa mai là ${mostSelectedFood[0]}`
+        : 'Chưa có món ăn nào được chọn.';
+      document.getElementById('most-selected-food').textContent = mostSelectedMessage;
     }
 
     // Hiển thị top 5 món ăn
@@ -480,14 +481,11 @@
         document.getElementById('main-screen').classList.remove('hidden');
         document.getElementById('welcome-message').textContent = `Chào ${playerName}!`;
         initFoodResults();
-        initPlayerFoodResults();
         updateFoodList();
         updateHistory();
         initDice();
         initFoodChart();
-        initPlayerFoodChart();
         updateFoodChart();
-        updatePlayerFoodChart();
       } else {
         alert('Vui lòng nhập tên của bạn!');
       }
@@ -499,18 +497,19 @@
       foodList.innerHTML = '';
       foods.forEach((food, index) => {
         const li = document.createElement('li');
-        li.className = 'flex justify-between items-center';
+        li.className = 'list-item flex justify-between items-center p-2 rounded-lg';
         li.innerHTML = `
-          ${food}
-          <button onclick="deleteFood(${index})" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Xóa</button>
+          ${food.name} (Được thêm bởi ${food.addedBy})
+          <button onclick="deleteFood(${index})" class="btn bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600">Xóa</button>
         `;
+        li.classList.add('animate__animated', 'animate__fadeIn');
         foodList.appendChild(li);
       });
     }
 
     // Xóa món ăn
     function deleteFood(index) {
-      const foodToDelete = foods[index];
+      const foodToDelete = foods[index].name;
       
       foods.splice(index, 1);
       history = history.filter(entry => {
@@ -518,19 +517,10 @@
         return match ? match[1] !== foodToDelete : true;
       });
       delete foodResults[foodToDelete];
-      Object.keys(playerFoodResults).forEach(player => {
-        if (playerFoodResults[player][foodToDelete]) {
-          delete playerFoodResults[player][foodToDelete];
-        }
-        if (Object.keys(playerFoodResults[player]).length === 0) {
-          delete playerFoodResults[player];
-        }
-      });
 
       socket.emit('updateFoods', foods);
       socket.emit('updateHistory', history);
       socket.emit('updateFoodResults', foodResults);
-      socket.emit('updatePlayerFoodResults', playerFoodResults);
 
       if (document.getElementById('result').textContent.includes(foodToDelete)) {
         document.getElementById('result').textContent = '';
@@ -547,18 +537,14 @@
       rollDiceAnimation(randomFace);
       setTimeout(() => {
         const randomIndex = Math.floor(Math.random() * foods.length);
-        const selectedFood = foods[randomIndex];
+        const selectedFood = foods[randomIndex].name;
         foodResults[selectedFood] = (foodResults[selectedFood] || 0) + 1;
-        if (!playerFoodResults[playerName]) {
-          playerFoodResults[playerName] = {};
-        }
-        playerFoodResults[playerName][selectedFood] = (playerFoodResults[playerName][selectedFood] || 0) + 1;
         history.push(`${selectedFood} (bởi ${playerName})`);
         document.getElementById('result').textContent = `Món ăn hôm nay: ${selectedFood}`;
+        document.getElementById('result').classList.add('animate__animated', 'animate__bounceIn');
 
         socket.emit('updateHistory', history);
         socket.emit('updateFoodResults', foodResults);
-        socket.emit('updatePlayerFoodResults', playerFoodResults);
       }, 1000);
     }
 
@@ -568,7 +554,9 @@
       historyList.innerHTML = '';
       history.forEach(item => {
         const li = document.createElement('li');
+        li.className = 'list-item p-2 rounded-lg';
         li.textContent = item;
+        li.classList.add('animate__animated', 'animate__fadeIn');
         historyList.appendChild(li);
       });
     }
@@ -577,11 +565,12 @@
     function addFood() {
       const newFood = document.getElementById('new-food').value.trim();
       if (newFood) {
-        if (foods.includes(newFood)) {
+        if (foods.some(food => food.name === newFood)) {
           alert('Món ăn này đã có trong danh sách!');
           return;
         }
-        foods.push(newFood);
+        const foodEntry = { name: newFood, addedBy: playerName };
+        foods.push(foodEntry);
         if (!(newFood in foodResults)) {
           foodResults[newFood] = 0;
         }
@@ -600,12 +589,10 @@
       history = [];
       expenses = [];
       foodResults = {};
-      playerFoodResults = {};
       
       socket.emit('updateFoods', foods);
       socket.emit('updateHistory', history);
       socket.emit('updateFoodResults', foodResults);
-      socket.emit('updatePlayerFoodResults', playerFoodResults);
 
       localStorage.setItem('expenses', JSON.stringify(expenses));
       document.getElementById('result').textContent = '';
@@ -624,7 +611,11 @@
       document.getElementById('finance-screen').classList.add('hidden');
       document.getElementById('main-screen').classList.remove('hidden');
       updateFoodChart();
-      updatePlayerFoodChart();
+    }
+
+    // Định dạng số tiền với dấu chấm phân cách
+    function formatNumber(number) {
+      return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
     // Thêm chi phí
@@ -642,21 +633,72 @@
       }
     }
 
+    // Chỉnh sửa chi phí
+    function editExpense(index) {
+      const expense = expenses[index];
+      const li = document.getElementById(`expense-item-${index}`);
+      li.innerHTML = `
+        <div class="flex flex-col space-y-2">
+          <input id="edit-description-${index}" type="text" value="${expense.description}" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none">
+          <input id="edit-amount-${index}" type="number" value="${expense.amount}" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none">
+          <div class="flex space-x-2">
+            <button onclick="saveExpense(${index})" class="btn bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600">Lưu</button>
+            <button onclick="updateExpenseList()" class="btn bg-gray-500 text-white px-3 py-1 rounded-lg hover:bg-gray-600">Hủy</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Lưu chi phí đã chỉnh sửa
+    function saveExpense(index) {
+      const newDescription = document.getElementById(`edit-description-${index}`).value.trim();
+      const newAmount = parseFloat(document.getElementById(`edit-amount-${index}`).value);
+      if (newDescription && newAmount > 0) {
+        expenses[index] = { description: newDescription, amount: newAmount };
+        localStorage.setItem('expenses', JSON.stringify(expenses));
+        updateExpenseList();
+      } else {
+        alert('Vui lòng nhập đầy đủ thông tin chi phí!');
+      }
+    }
+
+    // Xóa chi phí
+    function deleteExpense(index) {
+      expenses.splice(index, 1);
+      localStorage.setItem('expenses', JSON.stringify(expenses));
+      updateExpenseList();
+    }
+
     // Cập nhật danh sách thu chi
     function updateExpenseList() {
       const expenseList = document.getElementById('expense-list');
       expenseList.innerHTML = '';
       let total = 0;
-      expenses.forEach(expense => {
+      expenses.forEach((expense, index) => {
         const li = document.createElement('li');
-        li.textContent = `${expense.description}: ${expense.amount} VND`;
+        li.id = `expense-item-${index}`;
+        li.className = 'list-item flex justify-between items-center p-2 rounded-lg';
+        li.innerHTML = `
+          ${expense.description}: ${formatNumber(expense.amount)} VND
+          <div class="flex space-x-2">
+            <button onclick="editExpense(${index})" class="btn bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600">SỬA</button>
+            <button onclick="deleteExpense(${index})" class="btn bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600">XÓA</button>
+          </div>
+        `;
+        li.classList.add('animate__animated', 'animate__fadeIn');
         expenseList.appendChild(li);
         total += expense.amount;
       });
-      const totalLi = document.createElement('li');
-      totalLi.textContent = `Tổng cộng: ${total} VND`;
-      totalLi.classList.add('font-bold');
-      expenseList.appendChild(totalLi);
+
+      // Cập nhật tổng chi phí
+      document.getElementById('total-expense').textContent = `Tổng cộng: ${formatNumber(total)} VND`;
+
+      // Tính số tiền mỗi người phải đóng
+      const numberOfParticipants = parseInt(document.getElementById('number-of-participants').value) || 0;
+      const perPersonExpense = numberOfParticipants > 0 ? Math.round(total / numberOfParticipants) : 0;
+      document.getElementById('per-person-expense').textContent = numberOfParticipants > 0
+        ? `Mỗi người phải đóng: ${formatNumber(perPersonExpense)} VND (${numberOfParticipants} người)`
+        : 'Vui lòng nhập số người tham gia ăn.';
     }
   </script>
 </body>
