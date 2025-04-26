@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trò Chơi Đổ Xúc Xắc Chọn Món Ăn</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    #dice-container {
+      width: 150px;
+      height: 150px;
+      margin: 0 auto;
+    }
+    #food-chart, #player-food-chart {
+      width: 100%;
+      height: 200px;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 flex justify-center items-center min-h-screen">
+  <div id="app" class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+    <!-- Màn hình đăng nhập -->
+    <div id="login-screen" class="space-y-4">
+      <h1 class="text-2xl font-bold text-center">Chào mừng đến với trò chơi chọn món ăn!</h1>
+      <input id="player-name" type="text" placeholder="Nhập tên của bạn" class="w-full p-2 border rounded">
+      <button onclick="login()" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Bắt đầu chơi</button>
+    </div>
+
+    <!-- Màn hình chính -->
+    <div id="main-screen" class="hidden space-y-4">
+      <h1 class="text-2xl font-bold text-center">Chọn món ăn trưa</h1>
+      <p id="welcome-message" class="text-center"></p>
+      <div id="dice-container"></div>
+      <button onclick="rollDice()" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Đổ xúc xắc</button>
+      <p id="result" class="text-center font-semibold"></p>
+      <div class="space-y-2">
+        <input id="new-food" type="text" placeholder="Thêm món ăn mới" class="w-full p-2 border rounded">
+        <button onclick="addFood()" class="w-full bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Thêm món</button>
+      </div>
+      <h2 class="text-lg font-semibold">Danh sách món ăn</h2>
+      <ul id="food-list" class="list-disc pl-5"></ul>
+      <h2 class="text-lg font-semibold">Lịch sử chọn món</h2>
+      <ul id="history" class="list-disc pl-5"></ul>
+      <h2 class="text-lg font-semibold">Thống kê món ăn được chọn</h2>
+      <div class="flex space-x-2">
+        <button onclick="showTop5Foods()" class="w-full bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Top 5 món</button>
+        <button onclick="showAllFoods()" class="w-full bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Hiển thị tất cả</button>
+      </div>
+      <canvas id="food-chart"></canvas>
+      <h2 class="text-lg font-semibold">Thống kê món ăn theo người chơi</h2>
+      <canvas id="player-food-chart"></canvas>
+      <div class="flex space-x-2">
+        <button onclick="resetGame()" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600">Làm mới</button>
+        <button onclick="goToFinance()" class="w-full bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600">Thu chi</button>
+      </div>
+    </div>
+
+    <!-- Màn hình thu chi -->
+    <div id="finance-screen" class="hidden space-y-4">
+      <h1 class="text-2xl font-bold text-center">Quản lý thu chi</h1>
+      <div class="space-y-2">
+        <input id="expense-description" type="text" placeholder="Mô tả chi phí (VD: Cơm gà)" class="w-full p-2 border rounded">
+        <input id="expense-amount" type="number" placeholder="Số tiền (VND)" class="w-full p-2 border rounded">
+        <button onclick="addExpense()" class="w-full bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Thêm chi phí</button>
+      </div>
+      <h2 class="text-lg font-semibold">Thống kê thu chi</h2>
+      <ul id="expense-list" class="list-disc pl-5"></ul>
+      <button onclick="goToMain()" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Quay lại</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io('https://treasure-rightful-scallion.glitch.me'); // Đã cập nhật URL Glitch của bạn
+
+    let playerName = '';
+    let foods = [];
+    let history = [];
+    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+    let foodResults = {};
+    let playerFoodResults = {};
+    let foodChart, playerFoodChart;
+    let showingTop5 = false;
+
+    // Nhận dữ liệu ban đầu từ server
+    socket.on('initData', (data) => {
+      foods = data.foods;
+      history = data.history;
+      foodResults = data.foodResults;
+      playerFoodResults = data.playerFoodResults;
+      updateFoodList();
+      updateHistory();
+      if (foodChart && playerFoodChart) {
+        updateFoodChart();
+        updatePlayerFoodChart();
+      }
+    });
+
+    // Nhận cập nhật từ server
+    socket.on('updateFoods', (newFoods) => {
+      foods = newFoods;
+      updateFoodList();
+      updateFoodChart();
+    });
+
+    socket.on('updateHistory', (newHistory) => {
+      history = newHistory;
+      updateHistory();
+    });
+
+    socket.on('updateFoodResults', (newFoodResults) => {
+      foodResults = newFoodResults;
+      updateFoodChart();
+    });
+
+    socket.on('updatePlayerFoodResults', (newPlayerFoodResults) => {
+      playerFoodResults = newPlayerFoodResults;
+      updatePlayerFoodChart();
+    });
+
+    // Khởi tạo foodResults và playerFoodResults
+    function initFoodResults() {
+      foods.forEach(food => {
+        if (!(food in foodResults)) {
+          foodResults[food] = 0;
+        }
+      });
+    }
+
+    function initPlayerFoodResults() {
+      history.forEach(entry => {
+        const match = entry.match(/(.+?) \(bởi (.+)\)/);
+        if (match) {
+          const food = match[1];
+          const player = match[2];
+          if (!playerFoodResults[player]) {
+            playerFoodResults[player] = {};
+          }
+          if (!playerFoodResults[player][food]) {
+            playerFoodResults[player][food] = 0;
+          }
+          playerFoodResults[player][food]++;
+        }
+      });
+    }
+
+    // Three.js setup for 3D dice
+    let scene, camera, renderer, dice;
+    let isRolling = false;
+
+    function initDice() {
+      const container = document.getElementById('dice-container');
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, 150 / 150, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ alpha: true });
+      renderer.setSize(150, 150);
+      container.appendChild(renderer.domElement);
+
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const materials = [
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+        new THREE.MeshBasicMaterial({ color: 0xffffff })
+      ];
+      dice = new THREE.Mesh(geometry, materials);
+      scene.add(dice);
+
+      const dotGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+      const dotMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+      const dot1 = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot1.position.set(0, 0, 0.51);
+      dice.add(dot1);
+
+      const dot2a = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot2a.position.set(-0.2, 0.2, -0.51);
+      const dot2b = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot2b.position.set(0.2, -0.2, -0.51);
+      dice.add(dot2a);
+      dice.add(dot2b);
+
+      const dot3a = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot3a.position.set(-0.2, 0.2, 0.51);
+      const dot3b = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot3b.position.set(0, 0, 0.51);
+      const dot3c = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot3c.position.set(0.2, -0.2, 0.51);
+      dice.add(dot3a);
+      dice.add(dot3b);
+      dice.add(dot3c);
+
+      const dot4a = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot4a.position.set(-0.2, 0.2, -0.51);
+      const dot4b = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot4b.position.set(0.2, 0.2, -0.51);
+      const dot4c = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot4c.position.set(-0.2, -0.2, -0.51);
+      const dot4d = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot4d.position.set(0.2, -0.2, -0.51);
+      dice.add(dot4a);
+      dice.add(dot4b);
+      dice.add(dot4c);
+      dice.add(dot4d);
+
+      const dot5a = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot5a.position.set(-0.2, 0.2, 0.51);
+      const dot5b = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot5b.position.set(0.2, 0.2, 0.51);
+      const dot5c = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot5c.position.set(0, 0, 0.51);
+      const dot5d = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot5d.position.set(-0.2, -0.2, 0.51);
+      const dot5e = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot5e.position.set(0.2, -0.2, 0.51);
+      dice.add(dot5a);
+      dice.add(dot5b);
+      dice.add(dot5c);
+      dice.add(dot5d);
+      dice.add(dot5e);
+
+      const dot6a = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot6a.position.set(-0.2, 0.2, -0.51);
+      const dot6b = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot6b.position.set(0.2, 0.2, -0.51);
+      const dot6c = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot6c.position.set(-0.2, 0, -0.51);
+      const dot6d = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot6d.position.set(0.2, 0, -0.51);
+      const dot6e = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot6e.position.set(-0.2, -0.2, -0.51);
+      const dot6f = new THREE.Mesh(dotGeometry, dotMaterial);
+      dot6f.position.set(0.2, -0.2, -0.51);
+      dice.add(dot6a);
+      dice.add(dot6b);
+      dice.add(dot6c);
+      dice.add(dot6d);
+      dice.add(dot6e);
+      dice.add(dot6f);
+
+      camera.position.z = 2;
+      animateDice();
+    }
+
+    function animateDice() {
+      requestAnimationFrame(animateDice);
+      renderer.render(scene, camera);
+    }
+
+    function rollDiceAnimation(finalFace) {
+      if (isRolling) return;
+      isRolling = true;
+      let rollTime = 0;
+      const rollDuration = 1000;
+      const rollInterval = setInterval(() => {
+        rollTime += 16;
+        dice.rotation.x += Math.random() * 0.5;
+        dice.rotation.y += Math.random() * 0.5;
+        if (rollTime >= rollDuration) {
+          clearInterval(rollInterval);
+          switch (finalFace) {
+            case 1:
+              dice.rotation.x = 0;
+              dice.rotation.y = 0;
+              break;
+            case 2:
+              dice.rotation.x = Math.PI;
+              dice.rotation.y = 0;
+              break;
+            case 3:
+              dice.rotation.x = Math.PI / 2;
+              dice.rotation.y = 0;
+              break;
+            case 4:
+              dice.rotation.x = -Math.PI / 2;
+              dice.rotation.y = 0;
+              break;
+            case 5:
+              dice.rotation.x = 0;
+              dice.rotation.y = Math.PI / 2;
+              break;
+            case 6:
+              dice.rotation.x = 0;
+              dice.rotation.y = -Math.PI / 2;
+              break;
+          }
+          isRolling = false;
+        }
+      }, 16);
+    }
+
+    // Khởi tạo biểu đồ món ăn
+    function initFoodChart() {
+      const ctx = document.getElementById('food-chart').getContext('2d');
+      foodChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(foodResults),
+          datasets: [{
+            label: 'Số lần được chọn',
+            data: Object.values(foodResults),
+            backgroundColor: [
+              'rgba(255, 99, 132, 0.5)',
+              'rgba(54, 162, 235, 0.5)',
+              'rgba(255, 206, 86, 0.5)',
+              'rgba(75, 192, 192, 0.5)',
+              'rgba(153, 102, 255, 0.5)',
+              'rgba(255, 159, 64, 0.5)'
+            ].slice(0, Object.keys(foodResults).length),
+            borderColor: [
+              'rgba(255, 99, 132, 1)',
+              'rgba(54, 162, 235, 1)',
+              'rgba(255, 206, 86, 1)',
+              'rgba(75, 192, 192, 1)',
+              'rgba(153, 102, 255, 1)',
+              'rgba(255, 159, 64, 1)'
+            ].slice(0, Object.keys(foodResults).length),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Số lần được chọn'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Món ăn'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              enabled: true,
+              callbacks: {
+                label: function(context) {
+                  return `${context.label}: ${context.raw} lần`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Khởi tạo biểu đồ món ăn theo người chơi
+    function initPlayerFoodChart() {
+      const ctx = document.getElementById('player-food-chart').getContext('2d');
+      const players = Object.keys(playerFoodResults);
+      const allFoods = [...new Set(Object.values(playerFoodResults).flatMap(player => Object.keys(player)))];
+      const datasets = players.map((player, index) => ({
+        label: player,
+        data: allFoods.map(food => playerFoodResults[player][food] || 0),
+        backgroundColor: `rgba(${(index * 50) % 255}, ${(index * 100) % 255}, ${(index * 150) % 255}, 0.5)`,
+        borderColor: `rgba(${(index * 50) % 255}, ${(index * 100) % 255}, ${(index * 150) % 255}, 1)`,
+        borderWidth: 1
+      }));
+
+      playerFoodChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: allFoods,
+          datasets: datasets
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Số lần được chọn'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Món ăn'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top'
+            },
+            tooltip: {
+              enabled: true,
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw} lần`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Cập nhật biểu đồ món ăn
+    function updateFoodChart() {
+      let labels = Object.keys(foodResults);
+      let data = Object.values(foodResults);
+
+      if (showingTop5) {
+        const sortedFoods = Object.entries(foodResults)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+        labels = sortedFoods.map(entry => entry[0]);
+        data = sortedFoods.map(entry => entry[1]);
+      }
+
+      foodChart.data.labels = labels;
+      foodChart.data.datasets[0].data = data;
+      foodChart.data.datasets[0].backgroundColor = [
+        'rgba(255, 99, 132, 0.5)',
+        'rgba(54, 162, 235, 0.5)',
+        'rgba(255, 206, 86, 0.5)',
+        'rgba(75, 192, 192, 0.5)',
+        'rgba(153, 102, 255, 0.5)',
+        'rgba(255, 159, 64, 0.5)'
+      ].slice(0, labels.length);
+      foodChart.data.datasets[0].borderColor = [
+        'rgba(255, 99, 132, 1)',
+        'rgba(54, 162, 235, 1)',
+        'rgba(255, 206, 86, 1)',
+        'rgba(75, 192, 192, 1)',
+        'rgba(153, 102, 255, 1)',
+        'rgba(255, 159, 64, 1)'
+      ].slice(0, labels.length);
+      foodChart.update();
+    }
+
+    // Cập nhật biểu đồ món ăn theo người chơi
+    function updatePlayerFoodChart() {
+      const players = Object.keys(playerFoodResults);
+      const allFoods = [...new Set(Object.values(playerFoodResults).flatMap(player => Object.keys(player)))];
+      const datasets = players.map((player, index) => ({
+        label: player,
+        data: allFoods.map(food => playerFoodResults[player][food] || 0),
+        backgroundColor: `rgba(${(index * 50) % 255}, ${(index * 100) % 255}, ${(index * 150) % 255}, 0.5)`,
+        borderColor: `rgba(${(index * 50) % 255}, ${(index * 100) % 255}, ${(index * 150) % 255}, 1)`,
+        borderWidth: 1
+      }));
+
+      playerFoodChart.data.labels = allFoods;
+      playerFoodChart.data.datasets = datasets;
+      playerFoodChart.update();
+    }
+
+    // Hiển thị top 5 món ăn
+    function showTop5Foods() {
+      showingTop5 = true;
+      updateFoodChart();
+    }
+
+    // Hiển thị tất cả món ăn
+    function showAllFoods() {
+      showingTop5 = false;
+      updateFoodChart();
+    }
+
+    // Màn hình đăng nhập
+    function login() {
+      const nameInput = document.getElementById('player-name').value.trim();
+      if (nameInput) {
+        playerName = nameInput;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('main-screen').classList.remove('hidden');
+        document.getElementById('welcome-message').textContent = `Chào ${playerName}!`;
+        initFoodResults();
+        initPlayerFoodResults();
+        updateFoodList();
+        updateHistory();
+        initDice();
+        initFoodChart();
+        initPlayerFoodChart();
+        updateFoodChart();
+        updatePlayerFoodChart();
+      } else {
+        alert('Vui lòng nhập tên của bạn!');
+      }
+    }
+
+    // Cập nhật danh sách món ăn
+    function updateFoodList() {
+      const foodList = document.getElementById('food-list');
+      foodList.innerHTML = '';
+      foods.forEach((food, index) => {
+        const li = document.createElement('li');
+        li.className = 'flex justify-between items-center';
+        li.innerHTML = `
+          ${food}
+          <button onclick="deleteFood(${index})" class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Xóa</button>
+        `;
+        foodList.appendChild(li);
+      });
+    }
+
+    // Xóa món ăn
+    function deleteFood(index) {
+      const foodToDelete = foods[index];
+      
+      foods.splice(index, 1);
+      history = history.filter(entry => {
+        const match = entry.match(/(.+?) \(bởi (.+)\)/);
+        return match ? match[1] !== foodToDelete : true;
+      });
+      delete foodResults[foodToDelete];
+      Object.keys(playerFoodResults).forEach(player => {
+        if (playerFoodResults[player][foodToDelete]) {
+          delete playerFoodResults[player][foodToDelete];
+        }
+        if (Object.keys(playerFoodResults[player]).length === 0) {
+          delete playerFoodResults[player];
+        }
+      });
+
+      socket.emit('updateFoods', foods);
+      socket.emit('updateHistory', history);
+      socket.emit('updateFoodResults', foodResults);
+      socket.emit('updatePlayerFoodResults', playerFoodResults);
+
+      if (document.getElementById('result').textContent.includes(foodToDelete)) {
+        document.getElementById('result').textContent = '';
+      }
+    }
+
+    // Đổ xúc xắc với hiệu ứng
+    function rollDice() {
+      if (foods.length === 0) {
+        alert('Hãy thêm ít nhất một món ăn!');
+        return;
+      }
+      const randomFace = Math.floor(Math.random() * 6) + 1;
+      rollDiceAnimation(randomFace);
+      setTimeout(() => {
+        const randomIndex = Math.floor(Math.random() * foods.length);
+        const selectedFood = foods[randomIndex];
+        foodResults[selectedFood] = (foodResults[selectedFood] || 0) + 1;
+        if (!playerFoodResults[playerName]) {
+          playerFoodResults[playerName] = {};
+        }
+        playerFoodResults[playerName][selectedFood] = (playerFoodResults[playerName][selectedFood] || 0) + 1;
+        history.push(`${selectedFood} (bởi ${playerName})`);
+        document.getElementById('result').textContent = `Món ăn hôm nay: ${selectedFood}`;
+
+        socket.emit('updateHistory', history);
+        socket.emit('updateFoodResults', foodResults);
+        socket.emit('updatePlayerFoodResults', playerFoodResults);
+      }, 1000);
+    }
+
+    // Cập nhật lịch sử
+    function updateHistory() {
+      const historyList = document.getElementById('history');
+      historyList.innerHTML = '';
+      history.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        historyList.appendChild(li);
+      });
+    }
+
+    // Thêm món ăn
+    function addFood() {
+      const newFood = document.getElementById('new-food').value.trim();
+      if (newFood) {
+        if (foods.includes(newFood)) {
+          alert('Món ăn này đã có trong danh sách!');
+          return;
+        }
+        foods.push(newFood);
+        if (!(newFood in foodResults)) {
+          foodResults[newFood] = 0;
+        }
+        document.getElementById('new-food').value = '';
+
+        socket.emit('updateFoods', foods);
+        socket.emit('updateFoodResults', foodResults);
+      } else {
+        alert('Vui lòng nhập tên món ăn!');
+      }
+    }
+
+    // Làm mới game
+    function resetGame() {
+      foods = [];
+      history = [];
+      expenses = [];
+      foodResults = {};
+      playerFoodResults = {};
+      
+      socket.emit('updateFoods', foods);
+      socket.emit('updateHistory', history);
+      socket.emit('updateFoodResults', foodResults);
+      socket.emit('updatePlayerFoodResults', playerFoodResults);
+
+      localStorage.setItem('expenses', JSON.stringify(expenses));
+      document.getElementById('result').textContent = '';
+      location.reload();
+    }
+
+    // Chuyển sang màn hình thu chi
+    function goToFinance() {
+      document.getElementById('main-screen').classList.add('hidden');
+      document.getElementById('finance-screen').classList.remove('hidden');
+      updateExpenseList();
+    }
+
+    // Quay lại màn hình chính
+    function goToMain() {
+      document.getElementById('finance-screen').classList.add('hidden');
+      document.getElementById('main-screen').classList.remove('hidden');
+      updateFoodChart();
+      updatePlayerFoodChart();
+    }
+
+    // Thêm chi phí
+    function addExpense() {
+      const description = document.getElementById('expense-description').value.trim();
+      const amount = parseFloat(document.getElementById('expense-amount').value);
+      if (description && amount > 0) {
+        expenses.push({ description, amount });
+        document.getElementById('expense-description').value = '';
+        document.getElementById('expense-amount').value = '';
+        updateExpenseList();
+        localStorage.setItem('expenses', JSON.stringify(expenses));
+      } else {
+        alert('Vui lòng nhập đầy đủ thông tin chi phí!');
+      }
+    }
+
+    // Cập nhật danh sách thu chi
+    function updateExpenseList() {
+      const expenseList = document.getElementById('expense-list');
+      expenseList.innerHTML = '';
+      let total = 0;
+      expenses.forEach(expense => {
+        const li = document.createElement('li');
+        li.textContent = `${expense.description}: ${expense.amount} VND`;
+        expenseList.appendChild(li);
+        total += expense.amount;
+      });
+      const totalLi = document.createElement('li');
+      totalLi.textContent = `Tổng cộng: ${total} VND`;
+      totalLi.classList.add('font-bold');
+      expenseList.appendChild(totalLi);
+    }
+  </script>
+</body>
+</html>
