@@ -549,7 +549,7 @@
         const selectedFood = foods[randomIndex].name;
         foodResults[selectedFood] = (foodResults[selectedFood] || 0) + 1;
         history.push(`${selectedFood} (bởi ${playerName})`);
-        document.getElementById('result').textContent = `Món ăn hôm nay: ${selectedFood}`;
+        document.getElementById('result').textContent = `Món ăn bạn chọn trúng là: ${selectedFood}`;
         document.getElementById('result').classList.add('animate__animated', 'animate__bounceIn');
 
         socket.emit('updateHistory', history);
