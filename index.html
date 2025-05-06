@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trò Chơi Đổ Xúc Xắc Chọn Món Ăn</title>
+  <title>Trò Chơi VPIC Đổ Xúc Xắc Chọn Món Ăn Trưa</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -96,20 +96,29 @@
     input, button {
       border-radius: 10px !important;
     }
+    /* Hiệu ứng nhấp nháy */
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .blink {
+      animation: blink 2s infinite;
+    }
   </style>
 </head>
 <body>
   <div id="app">
     <!-- Màn hình đăng nhập -->
     <div id="login-screen" class="screen space-y-6">
-      <h1 class="text-3xl font-bold text-center text-gray-800">Trưa Mai Đớp Gì?</h1>
-      <input id="player-name" type="text" placeholder="Nhập tên của bạn" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+      <h1 class="text-3xl font-bold text-center text-gray-800">Chào Mừng Đến Với Trò Chơi Trưa Mai Đớp Gì?</h1>
+      <p class="blink text-sm italic text-center text-yellow-500">Một con game Bố Đời do Mr Ánh #07897 phát triển 😎</p>
+      <input id="player-name" type="text" placeholder="Ném cái tên cúng cơm vào đây" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:outline-none">
       <button onclick="login()" class="btn w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700">Bắt đầu Thử Vận May</button>
     </div>
 
     <!-- Màn hình chính -->
     <div id="main-screen" class="screen hidden space-y-6">
-      <h1 class="text-3xl font-bold text-center text-gray-800">Bữa Trưa QLSX & CUT</h1>
+      <h1 class="text-3xl font-bold text-center text-gray-800">THÊM MÓN & ĐỔ XÚC XẮC ĐỂ QUYẾT ĐỊNH BỮA TRƯA BẰNG NHÂN PHẨM 👇</h1>
       <p id="welcome-message" class="text-center text-gray-600"></p>
       <div id="dice-container" class="relative"></div>
       <button onclick="rollDice()" class="btn w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700">Đổ Xúc Xắc</button>
@@ -123,14 +132,14 @@
       <h2 class="text-xl font-semibold text-gray-700">Lịch Sử Chọn Món</h2>
       <ul id="history" class="list-disc pl-5 space-y-2"></ul>
       <h2 class="text-xl font-semibold text-gray-700">Thống Kê Món Ăn</h2>
-      <p id="most-selected-food" class="text-center font-medium text-gray-600"></p>
+      <p id="most-selected-food" class="blink text-lg font-bold text-center text-red-600 bg-yellow-100 p-3 rounded-lg"></p>
       <div class="flex space-x-3">
         <button onclick="showTop5Foods()" class="btn w-full bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700">Top 5 Món</button>
         <button onclick="showAllFoods()" class="btn w-full bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700">Hiển Thị Tất Cả</button>
       </div>
       <canvas id="food-chart"></canvas>
       <div class="flex space-x-3">
-        <button onclick="goToFinance()" class="btn w-full bg-yellow-600 text-white p-3 rounded-lg hover:bg-yellow-700">Thu Chi</button>
+        <button onclick="goToFinance()" class="btn w-full bg-yellow-600 text-white p-3 rounded-lg hover:bg-yellow-700">TỔNG THIỆT HẠI 💸</button>
       </div>
       <div id="reset-button" onclick="resetGame()" title="Làm mới">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -141,9 +150,9 @@
 
     <!-- Màn hình thu chi -->
     <div id="finance-screen" class="screen hidden space-y-6">
-      <h1 class="text-3xl font-bold text-center text-gray-800">Quản Lý Thu Chi</h1>
+      <h1 class="text-3xl font-bold text-center text-gray-800">Liệt Kê Hậu Quả</h1>
       <div class="space-y-3">
-        <input id="expense-description" type="text" placeholder="Mô tả nguyên liệu" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-purple-400 focus:outline-none">
+        <input id="expense-description" type="text" placeholder="Mô tả nguyên vật liệu" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-purple-400 focus:outline-none">
         <input id="expense-amount" type="number" placeholder="Số tiền (VND)" class="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-purple-400 focus:outline-none">
         <button onclick="addExpense()" class="btn w-full bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700">Thêm Chi Phí</button>
       </div>
@@ -455,7 +464,7 @@
       const mostSelectedFood = Object.entries(foodResults)
         .sort((a, b) => b[1] - a[1])[0];
       const mostSelectedMessage = mostSelectedFood && mostSelectedFood[1] > 0
-        ? `Món ăn được chọn trúng nhiều nhất cho bữa trưa mai là ${mostSelectedFood[0]}`
+        ? `Món ăn được chọn trúng nhiều nhất cho bữa trưa mai là ${mostSelectedFood[0]} 🎉`
         : 'Chưa có món ăn nào được chọn.';
       document.getElementById('most-selected-food').textContent = mostSelectedMessage;
     }
@@ -638,12 +647,14 @@
       const expense = expenses[index];
       const li = document.getElementById(`expense-item-${index}`);
       li.innerHTML = `
-        <div class="flex flex-col space-y-2">
-          <input id="edit-description-${index}" type="text" value="${expense.description}" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none">
-          <input id="edit-amount-${index}" type="number" value="${expense.amount}" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none">
-          <div class="flex space-x-2">
-            <button onclick="saveExpense(${index})" class="btn bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600">Lưu</button>
-            <button onclick="updateExpenseList()" class="btn bg-gray-500 text-white px-3 py-1 rounded-lg hover:bg-gray-600">Hủy</button>
+        <div class="flex items-center justify-between p-2 rounded-lg">
+          <div class="flex-1 flex space-x-2">
+            <input id="edit-description-${index}" type="text" value="${expense.description}" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none w-1/2">
+            <input id="edit-amount-${index}" type="number" value="${expense.amount}" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none w-1/2">
+          </div>
+          <div class="flex space-x-1">
+            <button onclick="saveExpense(${index})" class="btn bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-600 text-sm">Lưu</button>
+            <button onclick="updateExpenseList()" class="btn bg-gray-500 text-white px-2 py-1 rounded-lg hover:bg-gray-600 text-sm">Hủy</button>
           </div>
         </div>
       `;
@@ -679,10 +690,10 @@
         li.id = `expense-item-${index}`;
         li.className = 'list-item flex justify-between items-center p-2 rounded-lg';
         li.innerHTML = `
-          ${expense.description}: ${formatNumber(expense.amount)} VND
-          <div class="flex space-x-2">
-            <button onclick="editExpense(${index})" class="btn bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600">SỬA</button>
-            <button onclick="deleteExpense(${index})" class="btn bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600">XÓA</button>
+          <div class="flex-1">${expense.description}: ${formatNumber(expense.amount)} VND</div>
+          <div class="flex space-x-1">
+            <button onclick="editExpense(${index})" class="btn bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-600 text-sm">SỬA</button>
+            <button onclick="deleteExpense(${index})" class="btn bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 text-sm">XÓA</button>
           </div>
         `;
         li.classList.add('animate__animated', 'animate__fadeIn');
