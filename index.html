@@ -464,6 +464,7 @@
         <button onclick="rollDice()" class="btn w-full bg-gradient-to-r from-green-500 to-teal-500 text-white p-4 rounded-lg hover:from-green-600 hover:to-teal-600 text-lg font-bold mt-4">
           <i class="fas fa-random mr-2"></i> Đổ Xúc Xắc
         </button>
+        <p id="roll-count" class="text-center text-sm text-gray-500 mt-2"></p>
       </div>
       
       <div id="result" class="text-center font-bold text-2xl text-purple-700 p-4 bg-purple-50 rounded-xl"></div>
@@ -585,6 +586,7 @@
     let foodChart;
     let showingTop5 = false;
     let isRolling = false;
+    let rollCount = parseInt(localStorage.getItem(`rollCount_${playerName}`)) || 0;
 
     // Nhận dữ liệu ban đầu từ server
     socket.on('initData', (data) => {
@@ -593,6 +595,7 @@
       foodResults = data.foodResults;
       updateFoodList();
       updateHistory();
+      updateRollCount();
       if (foodChart) {
         updateFoodChart();
       }
@@ -639,7 +642,7 @@
       }, 1000);
     }
 
-    // Đổ xúc xắc với hiệu ứng
+    // Đổ xúc xắc với hiệu ứng và giới hạn
     function rollDice() {
       if (foods.length === 0) {
         // Hiệu ứng lắc khi không có món ăn
@@ -651,8 +654,22 @@
         alert('Hãy thêm ít nhất một món ăn!');
         return;
       }
+      if (rollCount >= 2) {
+        // Hiệu ứng lắc khi vượt giới hạn
+        const btn = document.querySelector('[onclick="rollDice()"]');
+        btn.classList.add('animate__animated', 'animate__shakeX');
+        setTimeout(() => {
+          btn.classList.remove('animate__animated', 'animate__shakeX');
+        }, 1000);
+        alert('Bạn đã hết lượt đổ xúc xắc! Giới hạn là 2 lần.');
+        return;
+      }
+
       const randomFace = Math.floor(Math.random() * 6) + 1;
       rollDiceAnimation(randomFace);
+      rollCount++;
+      localStorage.setItem(`rollCount_${playerName}`, rollCount);
+      updateRollCount();
       setTimeout(() => {
         const randomIndex = Math.floor(Math.random() * foods.length);
         const selectedFood = foods[randomIndex].name;
@@ -674,6 +691,17 @@
         socket.emit('updateHistory', history);
         socket.emit('updateFoodResults', foodResults);
       }, 1000);
+    }
+
+    // Cập nhật số lần đổ xúc xắc
+    function updateRollCount() {
+      const rollCountElement = document.getElementById('roll-count');
+      rollCountElement.textContent = `Số lần đổ còn lại: ${2 - rollCount}/2`;
+      if (rollCount >= 2) {
+        rollCountElement.classList.add('text-red-500');
+      } else {
+        rollCountElement.classList.remove('text-red-500');
+      }
     }
 
     // Khởi tạo biểu đồ món ăn
@@ -797,12 +825,14 @@
       const nameInput = document.getElementById('player-name').value.trim();
       if (nameInput) {
         playerName = nameInput;
+        rollCount = parseInt(localStorage.getItem(`rollCount_${playerName}`)) || 0;
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-screen').classList.remove('hidden');
         document.getElementById('welcome-message').textContent = `Chào ${playerName}!`;
         initFoodResults();
         updateFoodList();
         updateHistory();
+        updateRollCount();
         initFoodChart();
         updateFoodChart();
         
@@ -959,6 +989,8 @@
         history = [];
         expenses = [];
         foodResults = {};
+        rollCount = 0;
+        localStorage.setItem(`rollCount_${playerName}`, rollCount);
         
         socket.emit('updateFoods', foods);
         socket.emit('updateHistory', history);
@@ -966,6 +998,7 @@
 
         localStorage.setItem('expenses', JSON.stringify(expenses));
         document.getElementById('result').textContent = '';
+        updateRollCount();
         resetBtn.classList.remove('spin');
         location.reload();
       }, 1000);
